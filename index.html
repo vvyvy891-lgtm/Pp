@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VMOS Captcha Solver</title>
+  <script src="https://static.geetest.com/static/tools/gt.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f0f2f5; }
+    .card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; max-width: 360px; width: 90%; }
+    #status { margin-top: 15px; font-weight: bold; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🧩 Xác minh Captcha</h2>
+    <p>Kéo thanh trượt bên dưới để tiếp tục nhận máy Trial VMOS.</p>
+    <div id="captcha"></div>
+    <div id="status" style="color: #666;">Đang tải Captcha...</div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const gt = urlParams.get('gt');
+    const challenge = urlParams.get('challenge');
+    const sessionId = urlParams.get('session');
+    const callbackUrl = urlParams.get('callback');
+
+    if (!gt || !challenge || !callbackUrl) {
+      document.getElementById('status').innerText = "❌ Trình duyệt thiếu tham số Captcha!";
+    } else {
+      initGeetest({
+        gt: gt,
+        challenge: challenge,
+        offline: false,
+        new_captcha: true,
+        product: "embed",
+        width: "100%"
+      }, function (captchaObj) {
+        captchaObj.appendTo("#captcha");
+        document.getElementById('status').innerText = "👉 Vui lòng kéo thanh trượt";
+
+        captchaObj.onSuccess(function () {
+          var result = captchaObj.getValidate();
+          document.getElementById('status').innerText = "⏳ Đang gửi kết quả về Bot...";
+
+          fetch(callbackUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sessionId,
+              captchaVerifyParam: JSON.stringify({
+                geetest_challenge: result.geetest_challenge,
+                geetest_validate: result.geetest_validate,
+                geetest_seccode: result.geetest_seccode
+              })
+            })
+          })
+          .then(res => {
+            if(res.ok) {
+              document.getElementById('status').innerHTML = "<span style='color:green;'>✅ Xác minh thành công! Bạn có thể đóng trang này.</span>";
+            } else {
+              document.getElementById('status').innerHTML = "<span style='color:red;'>❌ Đã hết thời gian chờ phiên. Vui lòng bấm thử lại trên Discord.</span>";
+            }
+          })
+          .catch(() => {
+            document.getElementById('status').innerHTML = "<span style='color:red;'>❌ Lỗi kết nối Webhook!</span>";
+          });
+        });
+      });
+    }
+  </script>
+</body>
+</html>
